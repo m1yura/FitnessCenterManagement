@@ -1,277 +1,278 @@
-# Auto Service Management System
+# Fitness Center Management System
 
-A full-stack solution for managing an auto repair shop: SQL Server database with roles, views, triggers, stored procedures, test data, and a C# console application using ADO.NET.
+A full-stack solution for managing a fitness center: SQL Server database with business rules, audit logging, role-based access, and a .NET 8 console application using ADO.NET.
 
 ## Project Structure
 
 ```
-AutoServiceManagement/
+FitnessCenterManagement/
 ├── database/
-│   └── autoservice_database.sql    # Single-file database deployment script
-├── src/
-│   └── AutoServiceManagement/
-│       ├── Configuration/          # appsettings.json loader
-│       ├── Data/                   # DatabaseHelper (ADO.NET)
-│       ├── Models/                 # Entity models
-│       ├── Repositories/           # CRUD repositories for all entities
-│       ├── Services/               # Reports and analytics
-│       ├── UI/                     # Hierarchical console menu
-│       ├── Program.cs
-│       └── appsettings.json        # Configurable connection string
-├── AutoServiceManagement.sln
+│   └── fitnesscenter_database.sql    # Single deployment script (schema + data + security)
+├── FitnessCenterManagement/
+│   ├── Configuration/                # appsettings.json loader
+│   ├── Data/                         # DatabaseHelper (ADO.NET)
+│   ├── Models/                       # Entity models
+│   ├── Repositories/                 # CRUD repositories (3 parts)
+│   ├── Services/                     # Reports & analytics
+│   ├── UI/                           # Hierarchical console menu
+│   ├── appsettings.json              # Connection string configuration
+│   └── Program.cs                    # Entry point
+├── FitnessCenterManagement.sln
 └── README.md
 ```
 
 ## Requirements
 
-- **SQL Server** 2019+ (Express, Developer, or Standard)
-- **.NET SDK** 8.0 or newer
-- **Windows** (recommended for SQL Server Express LocalDB)
+| Component | Version |
+|-----------|---------|
+| .NET SDK | 6.0 or newer (project targets **net8.0**) |
+| SQL Server | 2019+ or SQL Server Express / LocalDB |
+| OS | Windows (recommended), Linux/macOS with SQL Server |
 
 ## Quick Start
 
 ### 1. Deploy the Database
 
-Open **SQL Server Management Studio (SSMS)** or use `sqlcmd`:
+Open **SQL Server Management Studio (SSMS)** or run via **sqlcmd**:
 
 ```powershell
-sqlcmd -S localhost -E -i "C:\Users\phara\AutoServiceManagement\database\autoservice_database.sql"
+sqlcmd -S localhost -E -i database\fitnesscenter_database.sql
 ```
 
-For SQL authentication:
+Or in SSMS: open `database/fitnesscenter_database.sql` and execute (F5).
 
-```powershell
-sqlcmd -S localhost -U sa -P YourPassword -i "database\autoservice_database.sql"
-```
-
-This creates database `autoservice_db` with:
-- **16 tables** with PK/FK relationships
-- **4 database roles** with GRANT/REVOKE permissions
-- **5 views** for simplified data access
-- **5 triggers** (audit, business rules, stock validation)
-- **6 stored procedures** with TRY/CATCH and transactions
-- **Test data** (25+ customers, 30 vehicles, 25 work orders, etc.)
+The script will:
+- Drop and recreate `fitnesscenter_db`
+- Create 16 related tables with foreign keys
+- Create views, triggers, stored procedures
+- Configure 4 database roles with GRANT/REVOKE
+- Insert 20–30+ test records per main table
 
 ### 2. Configure Connection String
 
-Edit `src/AutoServiceManagement/appsettings.json`:
+Edit `FitnessCenterManagement/appsettings.json`:
 
 ```json
 {
   "ConnectionStrings": {
-    "AutoServiceDb": "Server=localhost;Database=autoservice_db;Trusted_Connection=True;TrustServerCertificate=True;"
+    "FitnessCenterDb": "Server=localhost;Database=fitnesscenter_db;Trusted_Connection=True;TrustServerCertificate=True;"
   }
 }
 ```
 
-Examples:
+For SQL authentication:
 
-| Scenario | Connection String |
-|----------|-------------------|
-| LocalDB | `Server=(localdb)\\MSSQLLocalDB;Database=autoservice_db;Trusted_Connection=True;TrustServerCertificate=True;` |
-| SQL Auth | `Server=localhost;Database=autoservice_db;User Id=sa;Password=YourPassword;TrustServerCertificate=True;` |
-| Named instance | `Server=localhost\\SQLEXPRESS;Database=autoservice_db;Trusted_Connection=True;TrustServerCertificate=True;` |
-
-You can also change the connection string at runtime via menu **9. Connection Settings**.
+```json
+"FitnessCenterDb": "Server=localhost;Database=fitnesscenter_db;User Id=sa;Password=YourPassword;TrustServerCertificate=True;"
+```
 
 ### 3. Build and Run
 
 ```powershell
-cd C:\Users\phara\AutoServiceManagement
+cd FitnessCenterManagement
 dotnet restore
 dotnet build
-dotnet run --project src\AutoServiceManagement\AutoServiceManagement.csproj
+dotnet run
 ```
+
+You can also change the connection string at runtime via menu option **10. Connection Settings**.
 
 ## Database Schema
 
 ### Entity Relationship Overview
 
-```
-roles ──< users
-customers ──< vehicles
-customers ──< appointments ──< work_orders
-customers ──< work_orders ──< work_order_services
-                          └──< work_order_parts
-                          └──< payments
-employees ──< appointments / work_orders
-service_categories ──< services
-suppliers ──< parts ──< work_order_parts
-suppliers ──< part_supplies
-audit_log (standalone audit trail)
+```mermaid
+erDiagram
+    roles ||--o{ users : has
+    branches ||--o{ members : registers
+    branches ||--o{ trainers : employs
+    branches ||--o{ fitness_classes : offers
+    branches ||--o{ equipment : owns
+    membership_types ||--o{ memberships : defines
+    members ||--o{ memberships : holds
+    members ||--o{ class_enrollments : enrolls
+    members ||--o{ payments : makes
+    trainers ||--o{ trainer_specializations : certified
+    specializations ||--o{ trainer_specializations : includes
+    trainers ||--o{ class_schedules : leads
+    fitness_classes ||--o{ class_schedules : scheduled
+    class_schedules ||--o{ class_enrollments : contains
+    equipment ||--o{ equipment_maintenance : requires
+    memberships ||--o{ payments : paid_for
+    users ||--o{ payments : processes
+    trainers ||--o{ equipment_maintenance : performs
 ```
 
 ### Tables (16 entities)
 
 | Table | Description |
 |-------|-------------|
-| `roles` | RBAC roles (administrator, manager, mechanic, guest) |
-| `users` | System users linked to roles |
-| `customers` | Shop clients with loyalty points |
-| `vehicles` | Customer vehicles (VIN, mileage, etc.) |
-| `employees` | Mechanics and staff |
-| `service_categories` | Service catalog categories |
-| `services` | Service catalog with pricing |
-| `suppliers` | Parts suppliers |
-| `parts` | Inventory parts with stock levels |
-| `appointments` | Scheduled visits |
-| `work_orders` | Repair orders |
-| `work_order_services` | Services performed on orders |
-| `work_order_parts` | Parts used on orders |
-| `payments` | Payment records |
-| `part_supplies` | Stock replenishment deliveries |
+| `roles` | System roles (administrator, manager, trainer, guest) |
+| `users` | Application users linked to roles |
+| `branches` | Fitness center locations |
+| `membership_types` | Subscription plans (basic, premium, annual, etc.) |
+| `members` | Gym members/clients |
+| `memberships` | Active/expired member subscriptions |
+| `trainers` | Fitness instructors |
+| `specializations` | Training specializations (yoga, crossfit, etc.) |
+| `trainer_specializations` | Trainer certification mapping |
+| `fitness_classes` | Group class definitions |
+| `class_schedules` | Scheduled class sessions |
+| `class_enrollments` | Member class registrations |
+| `equipment` | Gym equipment inventory |
+| `equipment_maintenance` | Maintenance records |
+| `payments` | Payment transactions |
 | `audit_log` | Change audit trail |
 
-### Extended Attributes (soft delete & metadata)
+### Soft Delete
 
-All main entities include:
-- `isactive` — record active flag
-- `isdeleted` — soft delete flag
-- `createdat` / `updatedat` — timestamps
+All business tables include:
+- `isactive` (bit) — record is usable
+- `isdeleted` (bit) — soft delete flag
+- `createdat`, `updatedat` — timestamps
 
-Additional domain fields examples:
-- `customers.loyalty_points`, `preferred_contact`, `notes`
-- `vehicles.engine_type`, `fuel_type`, `last_service_date`
-- `work_orders.priority`, `discount_percent`, `diagnosis_notes`
-- `parts.reorder_level`, `warehouse_location`, `weight_kg`
+Application CRUD uses soft delete (`isdeleted = 1, isactive = 0`).
 
-### Database Roles & Permissions
+### Additional Attributes (7+ per domain entity)
 
-| Role | Access |
-|------|--------|
-| `autoservice_admin_role` | Full CRUD + execute all procedures |
-| `autoservice_manager_role` | Operational CRUD, no user/role delete |
-| `autoservice_mechanic_role` | Work orders, appointments, read-only customers |
-| `autoservice_guest_role` | Read-only via views and catalog |
+Examples of extended fields beyond basic CRUD:
+- **members**: `emergency_contact`, `health_notes`, `referral_source`, `fitness_goal`, `loyalty_points`
+- **trainers**: `certification_expiry`, `bio`, `rating`, `employment_type`, `max_clients_per_day`
+- **membership_types**: `guest_passes`, `freeze_days_allowed`, `includes_personal_training`
+- **branches**: `parking_spaces`, `has_pool`, `opening_hours`
+- **fitness_classes**: `calories_burn_estimate`, `equipment_required`
+- **equipment**: `manufacturer`, `condition_status`, `warranty_until`
 
 ### Views
 
 | View | Purpose |
 |------|---------|
-| `vw_active_work_orders` | Active repair orders with customer/vehicle info |
-| `vw_customer_vehicles` | Customer-vehicle join |
-| `vw_employee_workload` | Open orders and upcoming appointments per employee |
-| `vw_inventory_status` | Stock status (in_stock / low_stock / out_of_stock) |
+| `vw_active_memberships` | Active memberships with member and branch info |
+| `vw_class_schedule_overview` | Upcoming classes with trainer and capacity |
+| `vw_trainer_workload` | Trainer class and enrollment counts |
+| `vw_equipment_status` | Equipment condition and maintenance status |
 | `vw_revenue_summary` | Daily revenue by payment method |
 
-### Stored Procedures
+### Stored Procedures (with TRY/CATCH + transactions)
 
 | Procedure | Description |
 |-----------|-------------|
-| `sp_create_work_order` | Creates work order in transaction with validation |
-| `sp_add_service_to_work_order` | Adds service line and recalculates total |
-| `sp_process_payment` | Records payment, validates amount, updates status |
-| `sp_register_appointment` | Registers appointment with schedule conflict check |
-| `sp_receive_part_supply` | Records supply and updates inventory |
-| `sp_write_audit_log` | Helper for manual audit entries |
+| `sp_register_member` | Register member, optionally create initial membership |
+| `sp_create_membership` | Create membership with business rule checks |
+| `sp_enroll_in_class` | Enroll member with capacity and membership validation |
+| `sp_process_payment` | Process payment and update loyalty points |
 
 ### Triggers
 
 | Trigger | Purpose |
 |---------|---------|
-| `trg_work_orders_audit` | Logs work order insert/update/delete |
-| `trg_payments_audit` | Logs payment changes |
-| `trg_work_orders_status_check` | Prevents completing unpaid orders |
-| `trg_parts_stock_check` | Validates and decrements stock on part usage |
-| `trg_customers_soft_delete` | Logs customer soft delete events |
+| `trg_memberships_audit` | Audit membership insert/update/delete |
+| `trg_payments_audit` | Log all payment changes |
+| `trg_class_enrollments_capacity` | Validate class capacity, update enrollment count |
+| `trg_members_soft_delete` | Log member soft deletes |
+
+### Database Roles (GRANT/REVOKE)
+
+| Role | Access Level |
+|------|--------------|
+| `fitness_admin_role` | Full CRUD + execute all procedures |
+| `fitness_manager_role` | Operational CRUD, no user/role delete |
+| `fitness_trainer_role` | Classes, enrollments, read members |
+| `fitness_guest_role` | Read-only on views and catalog tables |
 
 ## Console Application Features
 
 ### Hierarchical Menu
 
-1. **Customers & Vehicles** — CRUD for clients and cars
-2. **Operations** — Appointments, work orders, payments, stored procedures
-3. **Inventory** — Parts, suppliers, supplies, low stock alert
-4. **Catalog** — Service categories and services
-5. **Administration** — Users, roles, employees
-6. **Reports & Analytics** — 6 built-in reports
-7. **Audit Log** — View change history
-8. **Global Search** — Cross-entity search
-9. **Connection Settings** — Runtime connection string update
+```
+MAIN MENU
+├── 1. Members & Memberships      (Members, Memberships CRUD + SP)
+├── 2. Classes & Schedules        (Classes, Schedules, Enrollments CRUD + SP)
+├── 3. Trainers & Specializations
+├── 4. Equipment & Maintenance
+├── 5. Branches & Membership Types
+├── 6. Administration             (Users, Roles)
+├── 7. Reports & Analytics        (7 reports)
+├── 8. Audit Log
+├── 9. Global Search
+└── 10. Connection Settings
+```
 
 ### CRUD Operations
 
-Full Create, Read, Update, Delete (soft delete) for all 16 entities via ADO.NET repositories using:
-- `ExecuteReader` — SELECT queries
-- `ExecuteNonQuery` — INSERT/UPDATE/DELETE
-- `ExecuteScalar` — Identity returns
+Full Create, Read, Update, Soft Delete for all 15 business entities plus search/filter on key tables.
 
-### Reports (4+ analytics)
+### Reports (7 analytics)
 
-1. Revenue by payment method
-2. Work orders by status
-3. Inventory status summary
-4. Employee workload
-5. Top customers by loyalty
-6. Monthly revenue trend
+1. Revenue by Payment Method
+2. Memberships by Status
+3. Classes by Category
+4. Trainer Workload
+5. Equipment Status Summary
+6. Top Members by Loyalty Points
+7. Monthly Revenue Trend
 
-## Sample SQL Queries
+## Example SQL Queries
 
 ```sql
--- Active work orders with customer details
-select * from vw_active_work_orders where status = 'in_progress';
+-- Active memberships with member details
+select * from vw_active_memberships where status = 'active';
 
--- Low stock parts
-select * from vw_inventory_status where stock_status = 'low_stock';
+-- Upcoming classes this week
+select * from vw_class_schedule_overview
+where start_time between sysutcdatetime() and dateadd(day, 7, sysutcdatetime());
 
--- Employee workload
-select * from vw_employee_workload order by open_work_orders desc;
-
--- Revenue this month
-select sum(total_revenue) as monthly_revenue
+-- Revenue by payment method
+select payment_method, sum(total_revenue) as revenue
 from vw_revenue_summary
-where payment_day >= datefromparts(year(getdate()), month(getdate()), 1);
+group by payment_method;
 
--- Create work order via stored procedure
-declare @id int;
-exec sp_create_work_order
-    @customer_id = 1,
-    @vehicle_id = 1,
-    @employee_id = 1,
-    @priority = 'normal',
-    @customer_complaint = 'strange noise',
-    @work_order_id = @id output;
-select @id as new_work_order_id;
+-- Register member via stored procedure
+declare @member_id int;
+exec sp_register_member
+    @branch_id = 1,
+    @first_name = 'john',
+    @last_name = 'doe',
+    @phone = '+7-900-000-0000',
+    @email = 'john@example.com',
+    @membership_type_id = 2,
+    @member_id = @member_id output;
+select @member_id as new_member_id;
 
--- Process payment
-declare @payment_id int;
-exec sp_process_payment
-    @work_order_id = 3,
-    @amount = 5000.00,
-    @payment_method = 'card',
-    @processed_by = 8,
-    @transaction_reference = 'txn-test-001',
-    @payment_id = @payment_id output;
+-- Enroll member in class
+declare @enrollment_id int;
+exec sp_enroll_in_class @schedule_id = 1, @member_id = 1, @enrollment_id = @enrollment_id output;
 
--- Audit log for work orders
-select * from audit_log where table_name = 'work_orders' order by changed_at desc;
+-- Audit log for payments
+select * from audit_log where table_name = 'payments' order by changed_at desc;
 ```
 
 ## Test Data Summary
 
-| Entity | Records |
-|--------|---------|
-| Customers | 25 |
-| Vehicles | 30 |
-| Employees | 8 |
-| Services | 20 |
-| Parts | 20 |
-| Appointments | 25 |
-| Work Orders | 25 |
-| Payments | 14 |
-| Part Supplies | 15 |
+| Table | Records |
+|-------|---------|
+| members | 30 |
+| memberships | 30 |
+| trainers | 8 |
+| fitness_classes | 10 |
+| class_schedules | 30 |
+| class_enrollments | 30 |
+| equipment | 15 |
+| payments | 30 |
+| branches | 5 |
+| membership_types | 8 |
 
-Default users: `admin`, `manager1`, `mechanic1`, `guest1` (password hashes are placeholders).
+Default users: `admin`, `manager1`, `trainer1`, `guest1` (password hashes are placeholders).
 
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| Connection failed | Verify SQL Server is running, database deployed, connection string correct |
-| Trigger error on part insert | Ensure sufficient stock in `parts.quantity_in_stock` |
-| Cannot complete work order | Full payment required before status `completed` (business rule trigger) |
-| `TrustServerCertificate` error | Add `TrustServerCertificate=True` to connection string |
+| Connection failed | Verify SQL Server is running; check connection string in `appsettings.json` |
+| Database not found | Run `database/fitnesscenter_database.sql` |
+| Login failed | Use `TrustServerCertificate=True` for local dev; verify Windows/SQL auth |
+| Class enrollment error | Ensure member has active membership and class is not full |
 
 ## License
 
-Educational project — free to use and modify.
+Educational / academic project. Free to use and modify.
